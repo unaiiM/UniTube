@@ -1,4 +1,5 @@
 const https = require("https");
+const fs = require("fs");
 
 class Downloader {
 	
@@ -279,11 +280,82 @@ class Downloader {
 
 	};
 
+	async download(mimeType = 'mp4', quality){
 
-	async download(mimeType = 'mp4', quality = 360){
+		this.format = this.get_format();	
+		this.title = this.get_title();
+		await this.download_data();
+
+	}
+
+	get_format(mimeType = 'video/mp4', quality = '360p'){
 	
-		let url = this.formats[0].url;	
-		let fileSize = Number(this.formats[0].contentLength);
+		/* Quality : */
+		mimeType = mimeType.split("/");
+		let type = mimeType[0];
+		let format = mimeType[1];
+		
+		if(type !== 'video' && type !== 'audio') throw new Error("Bad mimeType, error detecting the type, please specifiy audio/mp4 | audio/webm or video/mp4 video/webm.");
+
+		let allFormats = this.formats.concat(this.adaptiveFormats);	
+		let selectedFormats = [];	
+	
+		allFormats.forEach((item) => {
+
+			let itemType = item.mimeType.split("/")[0];
+		
+			if(itemType === type) selectedFormats.push(item);			
+	
+		});		
+
+		let selected;
+
+		if(type === 'video'){
+
+			for(let i = 0; i < selectedFormats.length; i++){
+
+				if(selectedFormats[i].qualityLabel === quality) {
+					
+					selected = selectedFormats[i];
+					break;
+
+				}else continue;
+			
+			};
+
+		} else { // audio
+
+			for(let i = 0; i < selectedFormats.length; i++){
+
+				if(selectedFormats[i].audioQuality === quality) {
+					
+					selected = selectedFormats[i];
+					break;
+
+				}else continue;
+			
+			};
+
+		};
+		console.log(selected);	
+		return selected;
+
+	};
+
+	get_title(){
+
+		let ytipc = this.ytipc;
+		
+		return ytipc.videoDetails.title;
+
+	};
+
+	async download_data(path = '.'){
+
+		let format = this.format;
+		let fileName = this.title + "." + (format.mimeType.split("/")[1]);
+		let url = format.url;	
+		let fileSize = Number(format.contentLength);
 		let downloadedSize = 0;
 
 		let content = await new Promise((resolv, reject) => {
@@ -308,9 +380,13 @@ class Downloader {
 
 		});
 
-			
+		let err = fs.writeFileSync(path + "/" + fileName, content);
+		
+		if(err) throw err;
+
+		return content;	
 	
-	}
+	};
 
 };
 
