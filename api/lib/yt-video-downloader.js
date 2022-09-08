@@ -24,8 +24,6 @@ class Downloader {
 	
 		this.formats = this.get_formats();
 		this.adaptiveFormats = this.get_adaptive_formats();
-		console.log(this.formats, this.adaptiveFormats);
-
 	}
 
 	check_url(url){
@@ -282,14 +280,38 @@ class Downloader {
 	};
 
 
-	mp3(){
-
-		
-
-	} 
-
-
+	async download(mimeType = 'mp4', quality = 360){
 	
+		let url = this.formats[0].url;	
+		let fileSize = Number(this.formats[0].contentLength);
+		let downloadedSize = 0;
+
+		let content = await new Promise((resolv, reject) => {
+			
+			let data = "";
+
+			https.get(url, (res) => {
+	
+				res.on("data", (buff) => {
+				
+					data += buff.toString();
+					downloadedSize += buff.length;	
+					
+					let currentPercent = Math.round((downloadedSize * 100) / fileSize);
+					process.stdout.write("\rDownloading [" + currentPercent + "%]");
+				
+				});
+				
+				res.on("end", () => resolv(data));
+
+			});
+
+		});
+
+			
+	
+	}
+
 };
 
 module.exports = Downloader;
