@@ -297,6 +297,8 @@ class Downloader {
 		
 		if(type !== 'video' && type !== 'audio') throw new Error("Bad mimeType, error detecting the type, please specifiy audio/mp4 | audio/webm or video/mp4 video/webm.");
 
+		this.formatType = format;
+
 		let allFormats = this.formats.concat(this.adaptiveFormats);	
 		let selectedFormats = [];	
 	
@@ -350,10 +352,36 @@ class Downloader {
 
 	};
 
+	filter_bad_chars(str){
+
+		let BLACKLIST = /[<>:"\/\\|?*]/;
+		let FOUND = [];
+		let index = 0;
+		let tmpStr = str;
+		let match = tmpStr.match(BLACKLIST);		
+		str = str.split("");
+
+
+		while(match){
+
+			index += match.index;
+			str[index] = encodeURIComponent(match[0]);
+
+			tmpStr = tmpStr.slice(index + 1, tmpStr.length);		
+			match = tmpStr.match(BLACKLIST);
+		
+		};
+
+		return str.join("");
+
+	};
+
 	async download_data(path = '.'){
 
 		let format = this.format;
-		let fileName = this.title + "." + (format.mimeType.split("/")[1]);
+		let fileName = this.title + "." + this.formatType;
+		fileName = this.filter_bad_chars(fileName);
+		console.log(fileName);
 		let url = format.url;	
 		let fileSize = Number(format.contentLength);
 		let downloadedSize = 0;
