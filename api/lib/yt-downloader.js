@@ -11,21 +11,21 @@ class Downloader {
 
 	async load(){
 
-		this.yt_video_source = await this.get_yt_video_source();
-		this.ytipc = this.get_ytipc();
+		this.yt_video_source = await this.get_yt_video_source();	// video source
+		this.ytipc = this.get_ytipc(); 					// ytInitialPlayerResponse variable
 
-		this.base_js_url = this.get_base_js_url();
-		this.base_js_source = await this.get_base_js_source();
+		this.base_js_url = this.get_base_js_url();			// base.js url
+		this.base_js_source = await this.get_base_js_source();		// base.js source
 	
-		this.cipher = {};
-		this.cipher.fname = this.get_decode_function_name(),	
-		this.cipher.mfdecode = this.get_main_decode_function()
-		this.cipher.ofname = this.get_object_decode_functions_name();
-		this.cipher.ofdecode = this.get_object_decode_functions();
+		this.cipher = {};						// cipher object
+		this.cipher.mfname = this.get_decode_function_name();		// name of the main decode function
+		this.cipher.mfdecode = this.get_main_decode_function();		// statments block of decode function
+		this.cipher.ofname = this.get_object_decode_functions_name();   // name of the object of the subfunctions of the decode function
+		this.cipher.ofdecode = this.get_object_decode_functions();	// block content of the subfunctions object
 	
-		this.formats = this.get_formats();
-		this.adaptiveFormats = this.get_adaptive_formats();
-	}
+		this.formats = this.get_formats();				// get video formats
+		this.adaptiveFormats = this.get_adaptive_formats();		// get video adaptiveFormats
+	};
 
 	check_url(url){
 
@@ -50,6 +50,7 @@ class Downloader {
 			https.get(url, (res) => {
 	
 				res.on("data", (buff) => data += buff.toString());
+				res.on("error", (err) => throw err);
 				res.on("end", () => resolv(data));
 
 			});
@@ -64,11 +65,14 @@ class Downloader {
 
 		let content = this.yt_video_source;
 
-		let ytInitialPlayerResponse = undefined;
+		let ytInitialPlayerResponse;
 		
 		let start = content.indexOf("var ytInitialPlayerResponse =");
+		if(start === -1) throw new Error("Can't found the ytInitialPlayerResponse variable on the video source!");
 		start += "var ytInitialPlayerResponse =".length;
+
 		let end = (content.slice(start, content.length)).indexOf("</script>") + start - 1; // - 1 for the final ; not allowed in JSON
+	
 
 		ytInitialPlayerResponse = content.slice(start, end);
 		ytInitialPlayerResponse = JSON.parse(ytInitialPlayerResponse);
@@ -80,7 +84,10 @@ class Downloader {
 
 		let ytvs = this.yt_video_source;
 	
-		let start = ytvs.indexOf('"jsUrl":"') + '"jsUrl:""'.length;
+		let start = ytvs.indexOf('"jsUrl":"');
+		if(start === -1) throw new Error("Can't found the base.js url on the video source!");
+		start += '"jsUrl:""'.length;
+
 		let end = (ytvs.slice(start, ytvs.length)).indexOf('base.js"') + 'base.js"'.length + start - 1;
 		
 		let base = ytvs.slice(start, end);
@@ -101,6 +108,7 @@ class Downloader {
 			https.get(url, (res) => {
 	
 				res.on("data", (buff) => data += buff.toString());
+				res.on("error", (err) => throw err);
 				res.on("end", () => resolv(data));
 
 			});
@@ -115,7 +123,9 @@ class Downloader {
 
 		let content = this.base_js_source;
 		
-		let start = content.match(/&&\(.*=.*\(decodeURIComponent\(\w\)\)/).index;
+		let start = content.match(/&&\(.*=.*\(decodeURIComponent\(\w\)\)/);
+		if(start === null) throw new Error("Can't find the decode function name on base.js source!");
+		start = start.index;
 		start += (content.slice(start, content.length)).indexOf("=") + 1; 
 		let end = (content.slice(start, content.length)).indexOf("(") + start;
 		
@@ -128,13 +138,13 @@ class Downloader {
 
 	get_main_decode_function(){
 
-		let fname = this.cipher.fname;
+		let fname = this.cipher.mfname;
 		let content = this.base_js_source;	
 			
-		let fdecode = undefined;
-
+		let fdecode;
 
 		let start = content.match(fname + "=function(.*){");
+		if(start === null) throw new Error("Can't find the decode function block statments!");
 		start = start.index + fname.length + 1;
 		let end = (content.slice(start, content.length)).indexOf("};") + start + 1;
 		
@@ -150,7 +160,10 @@ class Downloader {
 		
 		let mfdecode = (this.cipher.mfdecode).toString();
 
-		let start = mfdecode.match(/;.*..*(.*);/).index + 1;
+		let start = mfdecode.match(/;.*..*(.*);/);
+		if(start === null) throw new Error("Can't find the name of the decode functions object on the decode function block!");
+		start = start.index;
+
 		let end = (mfdecode.slice(start, mfdecode.length)).indexOf(".") + start;
 
 		let ofname = mfdecode.slice(start, end);
@@ -163,7 +176,10 @@ class Downloader {
 		let ofname = this.cipher.ofname;
 		let content = this.base_js_source;
 
-		let start = content.indexOf("var " + ofname + "=") + ("var " + ofname + "=").length;
+		let start = content.indexOf("var " + ofname + "=");
+		if(start === -1) throw new Error("Can't find the decode functions object variable on the base.js source!");
+		start += ("var " + ofname + "=").length;
+
 		let end = (content.slice(start, content.length)).indexOf("};") + "};".length + start;
 
 		let ofdecode = content.slice(start, end);
@@ -186,19 +202,6 @@ class Downloader {
 
 		return signature;
 
-	};
-
-	decode_url(url){
-
-		let encoded = ["%3F", "%3D", "%26"];
-		let decoded = ["?", "=", "&"];
-
-		for(let i = 0; i < encoded.length; i++){
-			url = url.replaceAll(encoded[i], decoded[i]);
-		};
-
-		return url;
-	
 	};
 
 	get_formats(){
@@ -386,29 +389,29 @@ class Downloader {
 		let fileSize = Number(format.contentLength);
 		let downloadedSize = 0;
 
-		let content = await new Promise((resolv, reject) => {
+		let dataBuffer = await new Promise((resolv, reject) => {
 			
-			let data = "";
+			let buffers = [];
 
 			https.get(url, (res) => {
 	
 				res.on("data", (buff) => {
 				
-					data += buff.toString();
-					downloadedSize += buff.length;	
-					
+					buffers.push(buff);
+					downloadedSize += buff.length;
+
 					let currentPercent = Math.round((downloadedSize * 100) / fileSize);
 					process.stdout.write("\rDownloading [" + currentPercent + "%]");
 				
 				});
 				
-				res.on("end", () => resolv(data));
+				res.on("end", () => resolv(Buffer.concat(buffers)));
 
 			});
 
 		});
 
-		let err = fs.writeFileSync(path + "/" + fileName, content);
+		let err = fs.writeFileSync(path + "/" + fileName, dataBuffer);
 		
 		if(err) throw err;
 
