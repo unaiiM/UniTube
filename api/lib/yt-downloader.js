@@ -574,7 +574,7 @@ class Downloader {
 					process.stdout.clearLine(0);
 
 
-					process.stdout.write("Downloading video [" + Math.round((videoDownloadedSize * 100) / videoSize) + "%]\nDownloading audio [" + Math.round((audioDownloadedSize * 100) / audioSize) + "%]");
+					process.stdout.write("\rDownloading video [" + Math.round((videoDownloadedSize * 100) / videoSize) + "%]\nDownloading audio [" + Math.round((audioDownloadedSize * 100) / audioSize) + "%]");
 		
 				}else {
 
@@ -621,7 +621,7 @@ class Downloader {
 					process.stdout.moveCursor(0, -1);
 					process.stdout.clearLine(0);
 
-					process.stdout.write("Downloading video [" + Math.round((videoDownloadedSize * 100) / videoSize) + "%]\nDownloading audio [" + Math.round((audioDownloadedSize * 100) / audioSize) + "%]");
+					process.stdout.write("\rDownloading video [" + Math.round((videoDownloadedSize * 100) / videoSize) + "%]\nDownloading audio [" + Math.round((audioDownloadedSize * 100) / audioSize) + "%]");
 		
 				}else {
 
@@ -641,6 +641,13 @@ class Downloader {
 			});
 
 			//console.log(info);
+
+			DownloadEvents.on("finished", (videoFile, audioFile) => {
+
+				console.log("Finished!");				
+
+			});			
+
 		});	
 	
 	};
