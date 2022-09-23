@@ -1,6 +1,13 @@
+const path = __dirname;
 const https = require("https");
 const util = require('util');
 const fs = require("fs");
+const os = require("os");
+const cprocess = require("child_process");
+const ffmpeg = {
+	winPath : path + "/ffmpeg/ffmpeg-master-latest-win64-gpl/bin",
+	linuxPath : path + "/ffmpeg/ffmpeg-master-latest-linux64-gpl/bin"
+};
 const EventEmitter = require("events");
 
 class Downloader {
@@ -8,7 +15,7 @@ class Downloader {
 	constructor (url) {
 
 		this.url = this.check_url(url);
-		this.formats = undefined;
+	
 	};
 
 	async load(){
@@ -28,8 +35,9 @@ class Downloader {
 		};	
 
 		this.title = this.get_title();
-		this.formats = this.get_formats();				// get video formats
+		//this.formats = this.get_formats();				// get video formats
 		this.adaptiveFormats = this.get_adaptive_formats();		// get video adaptiveFormats
+		this.emit("load");
 	};
 
 	check_url(url){
@@ -39,14 +47,21 @@ class Downloader {
 		// https://youtu.be/7d0QGcRXqGg --> 7d0QGcRXqGg
 		// embeded ???
 
-		return url;
+		if(url.match(".*:\/\/.*\.youtube.com\/") !== null){
+			return url;	
+		}else if(url.match(".*:\/\/youtu.be\/")){
+			let v = url.split("/")[4];
+			return "https://www.youtube.com/watch?v=" + v;
+		}else {
+			let err = new Error("Bad url entred! Example: https://youtube.com/watch?v=jUoHX7i03nY");
+			this.emit("error", err);
+		};
 
 	};
 
 	get_yt_video_source(){
 
 		let url = this.url;	
-		//console.log(redirect)
 			
 		let content = new Promise((resolv, reject) => {
 			
@@ -56,7 +71,9 @@ class Downloader {
 	
 				res.on("data", (buff) => data += buff.toString());
 				res.on("error", (err) => { 
-					if(err) throw err; 
+					if(err){
+						this.emit("error", err);
+					}; 
 				});
 				res.on("end", () => resolv(data));
 
@@ -75,7 +92,12 @@ class Downloader {
 		let ytInitialPlayerResponse;
 		
 		let start = content.indexOf("var ytInitialPlayerResponse =");
-		if(start === -1) throw new Error("Can't found the ytInitialPlayerResponse variable on the video source!");
+		
+		if(start === -1){
+			let err = new Error("Can't found the ytInitialPlayerResponse variable on the video source!");
+			this.emit("error", err);
+		};
+
 		start += "var ytInitialPlayerResponse =".length;
 
 		let end = (content.slice(start, content.length)).indexOf("</script>") + start - 1; // - 1 for the final ; not allowed in JSON
@@ -92,14 +114,19 @@ class Downloader {
 		let ytvs = this.yt_video_source;
 	
 		let start = ytvs.indexOf('"jsUrl":"');
-		if(start === -1) throw new Error("Can't found the base.js url on the video source!");
+		
+		if(start === -1){
+			let err = new Error("Can't found the base.js url on the video source!");
+			this.emit("error", err);
+		};
+
 		start += '"jsUrl:""'.length;
 
 		let end = (ytvs.slice(start, ytvs.length)).indexOf('base.js"') + 'base.js"'.length + start - 1;
 		
 		let base = ytvs.slice(start, end);
 		base = "https://www.youtube.com" + base;
-		console.log(base);
+		
 		return base;
 
 	}
@@ -116,7 +143,7 @@ class Downloader {
 	
 				res.on("data", (buff) => data += buff.toString());
 				res.on("error", (err) => {
-					if(err) throw err; 
+					if(err) this.emit("error", err); 
 				});
 				res.on("end", () => resolv(data));
 
@@ -138,10 +165,10 @@ class Downloader {
 
 		let ytipc = this.ytipc;
 
-		if(ytipc.streamingData.adaptiveFormats[0].signatureCipher || ytipc.streamingData.formats[0].signatureCipher) return true;
+		if(ytipc.streamingData.adaptiveFormats[0].signatureCipher) return true;
 		else return false;
 	
-	}	
+	};	
 
 	get_decode_function_name(){
 
@@ -149,7 +176,11 @@ class Downloader {
 		
 		let start = content.match(/&&\(.*=.*\(decodeURIComponent\(.*\)\),.*.set\(.*,encodeURIComponent\(.*\)\)\)/);
 
-		if(start === null) throw new Error("Can't find the decode function name on base.js source!");
+		if(start === null){
+			let err = new Error("Can't find the decode function name on base.js source!");
+			this.emit("error", err);	
+		};
+
 		start = start.index;
 		start += (content.slice(start, content.length)).indexOf("=") + 1; 
 		let end = (content.slice(start, content.length)).indexOf("(") + start;
@@ -188,7 +219,11 @@ class Downloader {
 
 		let start = content.match(this.double_escape_special_chars(fname) + "=function(.*){");
 		
-		if(start === null) throw new Error("Can't find the decode function block statments!");
+		if(start === null){
+			let err = new Error("Can't find the decode function block statments!");
+			this.emit("error", err);		
+		};
+
 		start = start.index + fname.length + 1;
 		let end = (content.slice(start, content.length)).indexOf("};") + start + 1;
 		
@@ -205,7 +240,11 @@ class Downloader {
 		let mfdecode = (this.cipher.mfdecode).toString();
 
 		let start = mfdecode.match(/;.*..*(.*);/);
-		if(start === null) throw new Error("Can't find the name of the decode functions object on the decode function block!");
+		if(start === null){
+			let err = new Error("Can't find the name of the decode functions object on the decode function block!");
+			this.emit("error", err);
+		};
+
 		start = start.index + 1;
 
 		let end = (mfdecode.slice(start, mfdecode.length)).indexOf(".") + start;
@@ -221,7 +260,12 @@ class Downloader {
 		let content = this.base_js_source;
 		
 		let start = content.indexOf("var " + ofname + "=");
-		if(start === -1) throw new Error("Can't find the decode functions object variable on the base.js source!");
+	
+		if(start === -1){
+			let err = new Error("Can't find the decode functions object variable on the base.js source!");
+			this.emit("error", err);
+		};	
+
 		start += ("var " + ofname + "=").length;
 
 		let end = (content.slice(start, content.length)).indexOf("};") + "};".length + start;
@@ -248,7 +292,7 @@ class Downloader {
 
 	};
 
-	get_formats(){
+	/*get_formats(){
 
 		let ytipc = this.ytipc;
 		let formats = ytipc.streamingData.formats;
@@ -286,7 +330,7 @@ class Downloader {
 	
 		return formats;
 
-	};
+	};*/
 
 
 	get_adaptive_formats(){ // and decode Signature Cipher
@@ -319,7 +363,7 @@ class Downloader {
 				let url = query['url'] + "&" + query["sp"] + "=" + s;
 				
 				formats[i]["url"] = url;
-
+				formats[i].contentLength = Number(formats[i].contentLength);
 			}else continue;
 
 		};	
@@ -329,6 +373,8 @@ class Downloader {
 	};
 
 	check_quality(quality){
+
+		if(typeof(quality) === "string") quality = quality.toUpperCase();
 
 		switch(quality){
 			case 144:
@@ -350,28 +396,52 @@ class Downloader {
 
 	};
 
-	get_format(type, quality){
+	get_format(type, quality, mimeType){
 	
-		if(type === 'audio') quality = quality.toUpperCase();
+		if(!type || !quality){ 
+			let err = new Error("Undefined quality or type.");
+			this.emit("error", err);
+		}else if(type !== 'video' && type !== 'audio'){
+			let err = new Error("Bad type defined!");
+			this.emit("error", err);
+		};
 
-		if(!type || !quality) throw new Error("Undefined quality or type.");
-		else if(type !== 'video' && type !== 'audio') throw new Error("Bad type defined!");
-		console.log(quality);	
-		if(this.check_quality(quality)) throw new Error("Bad quality defined!");
+		if(this.check_quality(quality)){
+			let err = new Error("Bad quality defined!");
+			this.emit("error", err);
+		};
 
-		if(type === 'audio') quality = "AUDIO_QUALITY_" + quality;
+		if(type === 'audio') quality = "AUDIO_QUALITY_" + quality.toUpperCase();
 		else quality = quality + "p";
 
-		let allFormats = this.formats.concat(this.adaptiveFormats);	
+		let formats = this.adaptiveFormats;	
 		let selectedFormats = [];	
 	
-		allFormats.forEach((item) => {
-
-			let itemType = item.mimeType.split("/")[0];
+		if(mimeType === "any" || !mimeType){
 		
-			if(itemType === type) selectedFormats.push(item);			
+			formats.forEach((item) => {
+
+				let itemType = item.mimeType.split("/")[0];
+		
+				if(itemType === type) selectedFormats.push(item);			
+		
+			});	
 	
-		});		
+		}else {
+	
+			formats.forEach((item) => {
+
+				let itemMimeType = item.mimeType;		
+
+				if(itemMimeType.indexOf(mimeType) !== -1) selectedFormats.push(item);			
+
+			});		
+		};
+
+		if(formats.length === 0){
+			let err = new Error("None formts found with" + mimeType + " mimeType");
+			this.emit("error", err);
+		};			
 
 		let selected;
 
@@ -438,51 +508,156 @@ class Downloader {
 
 	};
 
+	createDownloadRange(format, size){
 
-	createDownloadSocket(options = { video : { quality : 360 } }){ 
-		
+		let range = [];
+		let length = Math.floor(format.contentLength / size);
+		let position = 0;
+			
+		for(let i = 0; i < size; i++){
+			range.push(format.url + "&range=" + (position) + "-" + (position + length - 1));
+			position += length; 	
+			
+		};	
+
+		let mod = format.contentLength - position;
+		if(mod > 0) range.push(format.url + "&range=" + (position) + "-" + (position + mod));
+
+		return range;
+
+	}
+
+	checkDownloadOptions(options){
+
 		/*
-
 			video : {
 				quality : 360,
-				type : 'm' # webm |
+				type : 'm4a' # webm |
 				audio : true	
 			}
 			audio : {
 				quality : low,
+				type: 'm4a' # webm | m4a
 			}
-
-		*/
-		
+			downloadRangeSize : 10 
+		*/	
 		// mp4 videos with higher quality than 360 will need to download the audio separated
 
-		if(!options.video && !options.audio) throw new Error("None type has been specified!");
+		let checkedOptions = {
+			video : {
+				quality : undefined,
+				mimeType : undefined
+			},
+			audio : {
+				quality : undefined,
+				mimeType : undefined
+			},
+			downloadRangeSize : undefined
+		};
+		let defaultOptions = {
+			video : {
+				quality : 360,
+				mimeType: 'video/mp4'
+			},
+			audio : {
+				quality : "medium",
+				mimeType : 'audio/mp4',
+			},
+			downloadRangeSize : 10
+		};
 
 		// default settings
+	
+		if(!options.video && !options.audio) return defaultOptions;
+	
+		if(options.video){
+
+			if(!options.video.quality) checkedOptions.video.quality = defaultOptions.video.quality
+			else if(this.check_quality(options.video.quality)){
+				let err = new Error("Bad Quality");
+				this.emit("error", err);
+			}else checkedOptions.video.quality = options.video.quality;
+
+			if(!options.video.mimeType) checkedOptions.video.mimeType = defaultOptions.video.mimeType
+			else checkedOptions.video.mimeType = options.video.mimeType;
+		};
+	
+
+		if(options.audio){
+
+			if(!options.audio.quality) checkedOptions.audio.quality = defaultOptions.audio.quality
+			else if(this.check_quality(options.audio.quality)){
+				let err = new Error("Bad Quality");
+				this.emit("error", err);
+			}else checkedOptions.audio.quality = options.audio.quality;
+	
+			if(!options.audio.mimeType) checkedOptions.audio.mimeType = defaultOptions.audio.mimeType
+			else checkedOptions.audio.mimeType = options.audio.mimeType;
+					
+
+		};
+
+		if(!options.downloadRangeSize) checkedOptions.downloadRangeSize = defaultOptions.downloadRangeSize;
+	
+		console.log("Generated options:\n-------------", checkedOptions, "-------------");
+
+		this.options = checkedOptions;
+	
+		return checkedOptions;
+
+	};	
+
+	createDownloadSockets(options){ 
 		
-		if((!options.video.audio || options.video.audio === true) && !options.audio && options.video.quality > 360) options["audio"] = { quality: "medium" };
+		options = this.checkDownloadOptions(options);
+
+		let info = {};
 
 		if(options.video){
 			
-			let format = this.get_format("video", options.video.quality);	
-				
-			https.get(format.url, (res) => {
+			let format = this.get_format("video", options.video.quality, options.video.mimeType);	
+
+			let videoRange = this.createDownloadRange(format, options.downloadRangeSize, options.mimeType);
+
+			info["video"] = {
+				format : format,
+				videoRange : videoRange
+			};
+
+			for(let i = 0; i < videoRange.length; i++){
+
+				let index = i; // donwload index
+
+				https.get(videoRange[i], (res) => {
 	
-				this.emit("video-socket", format, res);		
+					this.emit("video-socket", res, index);		
 			
-			});
+				});
+			};
 			
 		};
 	
-		if(options.audio){
-			console.log("aaa");	
-			let format = this.get_format("audio", options.audio.quality);
-		
-			https.get(format.url, (res) => {
-	
-				this.emit("audio-socket", format, res);		
+		if(options.audio){	
 			
-			});
+			let format = this.get_format("audio", options.audio.quality);
+	
+			let audioRange = this.createDownloadRange(format, options.downloadRangeSize, options.audio.mimeType);
+		
+			info["audio"] = {
+				format : format,
+				audioRange : audioRange
+			};
+
+			for(let i = 0; i < audioRange.length; i++){
+
+				let index = i; // donwload index
+
+				https.get(audioRange[i], (res) => {
+	
+					this.emit("audio-socket", res, index);		
+			
+				});
+			};
 			
 		};
 
@@ -507,6 +682,8 @@ class Downloader {
 			res.on("end", () => resolv(Buffer.concat(buffers)));
 		});*/
 
+		return info;
+
 	};
 
 	check_file_type(mimeType){
@@ -520,6 +697,10 @@ class Downloader {
 			case "video/mp4":
 				type = "mp4";
 				break;
+			case "video/webm":
+			case "audio/webm":
+				type = "webm";
+				break;
 			default:
 				type = "none";
 		
@@ -528,9 +709,9 @@ class Downloader {
 		return type;
 	};
 
-	download(options, path = "."){	
+	download(options, opath = "."){	// opath --> output path for the donwloaded files
 
-		this.createDownloadSocket(options);			
+		let downloadInfo = this.createDownloadSockets(options);			
 	
 		let title = this.get_title();
 
@@ -542,113 +723,236 @@ class Downloader {
 
 		let videoDownloadedSize = 0;
 		let audioDownloadedSize = 0;
-		
 		let audioSize;
 		let videoSize;
+		
+		let videoBuffers = [];
+		let videoBuffersFinished = 0;
+		let videoBuffersLength;
+		
+		if(downloadInfo.video){
+		
+			let mimeType = downloadInfo.video.format.mimeType.match(/.*;/);
+			mimeType = mimeType[0].slice(0, mimeType[0].length - 1);
+		
+			let type = this.check_file_type(mimeType);
+			videoFile = opath + "/" + this.filter_bad_chars(title) + "." + type;					
+			//
 
-		let DownloadEvents = new EventEmitter();
+			videoBuffersLength = downloadInfo.video.videoRange.length;
+	
+			videoSize = downloadInfo.video.format.contentLength;
 
-		this.on("video-socket", (info, socket) => {
+		};
 
-			let mimeType = info.mimeType.match(/.*;/);
+		let audioBuffers = [];
+		let audioBuffersFinished = 0;
+		let audioBuffersLength;
+
+		if(downloadInfo.audio){
+	
+			let mimeType = downloadInfo.audio.format.mimeType.match(/.*;/);
 			mimeType = mimeType[0].slice(0, mimeType[0].length - 1);
 			
 			let type = this.check_file_type(mimeType);
-			videoFile = path + "/" + this.filter_bad_chars(title) + "." + type;			
-			
-			let err;
-			err = fs.writeFileSync(videoFile, "");
+			audioFile = opath + "/" + this.filter_bad_chars(title) + "." + type;		
 
-			videoSize = Number(info.contentLength); 
+			//
+			
+			audioBuffersLength = downloadInfo.audio.audioRange.length;
+
+			audioSize = downloadInfo.audio.format.contentLength;
+
+		};
+		
+		let DownloadEvents = new EventEmitter();
+	
+		this.on("video-socket", (socket, index) => { 
 			
 			socket.on("data", (buff) => {
-
-				err = fs.appendFileSync(videoFile, buff);
 
 				videoDownloadedSize += buff.length;
-				
-				if(audioSize){
-				
-					process.stdout.clearLine(0);
-					process.stdout.moveCursor(0, -1);
-					process.stdout.clearLine(0);
 
+				if(!videoBuffers[index]) videoBuffers[index] = buff;
+				else videoBuffers[index] = Buffer.concat([videoBuffers[index], buff]);
+			
+				if(downloadInfo.audio){
+						
+					process.stdout.write("\r[Info] Downloading video: " + Math.floor((videoDownloadedSize * 100) / videoSize) + "%\t|\t Downloading audio: " + Math.floor((audioDownloadedSize * 100) / audioSize) + "%");
 
-					process.stdout.write("\rDownloading video [" + Math.round((videoDownloadedSize * 100) / videoSize) + "%]\nDownloading audio [" + Math.round((audioDownloadedSize * 100) / audioSize) + "%]");
+					/*for(let i = 0; i < videoBuffersLength + audioBuffersLength; i++){	
+						process.stdout.moveCursor(0, -1);
+						process.stdout.clearLine(0);
+					};*/
+
+					/*console.clear();
+
+					for(let i = 0; i < videoBuffersLength; i++){
+						console.log("[Video] Buffer (" + i + ") = ", videoBuffers[i]);						
+					};
+					for(let i = 0; i < audioBuffersLength; i++){
+						console.log("[Audio] Buffer (" + i + ") = ", audioBuffers[i]);						
+					};*/
+					
+					//process.stdout.write("\rDownloading video [" + Math.round((videoDownloadedSize * 100) / videoSize) + "%]\nDownloading audio [" + Math.round((audioDownloadedSize * 100) / audioSize) + "%]");
 		
 				}else {
+	
+					process.stdout.write("\r[Info] Downloading video: " + Math.floor((videoDownloadedSize * 100) / videoSize) + "%");
 
-					process.stdout.write("\rDownloading video [" + Math.round((videoDownloadedSize * 100) / videoSize) + "%]");				
+
+					/*for(let i = 0; i < videoBuffersLength; i++){	
+						process.stdout.moveCursor(0, -1);
+						process.stdout.clearLine(0);
+					}; 
+	
+					console.clear();
+
+					for(let i = 0; i < videoBuffersLength; i++){
+						console.log("[Video] Buffer (" + i + ") = ", videoBuffers[i]);						
+					};*/
+			
+					//process.stdout.write("\rDownloading video [" + Math.round((videoDownloadedSize * 100) / videoSize) + "%]");				
 
 				};
 
 			});
 		
-			socket.on("error", (err) => err = err);
+			socket.on("error", (err) => { if(err) this.emit("error", err); });
 
 			socket.on("end", () => { 
+			
+				videoBuffersFinished++;
 
-				if((audioFile && isAudioDownloaded) || !audioFile) DownloadEvents.emit("finished", videoFile, audioFile);
-
-				else isVideoDownloaded = true;
+				if(videoBuffersFinished === videoBuffersLength){
+					if(isAudioDownloaded || !audioFile) 
+						DownloadEvents.emit("finish");
+					else isVideoDownloaded = true;
+				}; 
+				
 			});
 
-			//console.log(info);
 		});
 
-		this.on("audio-socket", (info, socket) => {
-	
-			let mimeType = info.mimeType.match(/.*;/);
-			mimeType = mimeType[0].slice(0, mimeType[0].length - 1);
-			
-			let type = this.check_file_type(mimeType);
-			audioFile = path + "/" + this.filter_bad_chars(title) + "." + type;			
-			
-			let err;
-			err = fs.writeFileSync(audioFile, "");
-
-			audioSize = Number(info.contentLength); 
-			
+		this.on("audio-socket", (socket, index) => {
+		
 			socket.on("data", (buff) => {
-
-				err = fs.appendFileSync(audioFile, buff);
-
+	
 				audioDownloadedSize += buff.length;
-				
-				if(videoSize){
 
-					process.stdout.clearLine(0);
-					process.stdout.moveCursor(0, -1);
-					process.stdout.clearLine(0);
+				if(!audioBuffers[index]) audioBuffers[index] = buff;
+				else audioBuffers[index] = Buffer.concat([audioBuffers[index], buff]);
+			
+				if(downloadInfo.video){
+					
+					process.stdout.write("\r[Info] Downloading video: " + Math.floor((videoDownloadedSize * 100) / videoSize) + "%\t|\t Downloading audio: " + Math.floor((audioDownloadedSize * 100) / audioSize) + "%");
 
-					process.stdout.write("\rDownloading video [" + Math.round((videoDownloadedSize * 100) / videoSize) + "%]\nDownloading audio [" + Math.round((audioDownloadedSize * 100) / audioSize) + "%]");
+					/*for(let i = 0; i < videoBuffersLength + audioBuffersLength; i++){	
+						process.stdout.moveCursor(0, -1);
+						process.stdout.clearLine(0);
+					};*/
+	
+					/*console.clear();
+
+					for(let i = 0; i < videoBuffersLength; i++){
+						console.log("[Video] Buffer (" + i + ") = ", videoBuffers[i]);						
+					};
+					for(let i = 0; i < audioBuffersLength; i++){
+						console.log("[Audio] Buffer (" + i + ") = ", audioBuffers[i]);						
+					};*/
+					
+					//process.stdout.write("\rDownloading video [" + Math.round((videoDownloadedSize * 100) / videoSize) + "%]\nDownloading audio [" + Math.round((audioDownloadedSize * 100) / audioSize) + "%]");
 		
 				}else {
+	
+					process.stdout.write("\r[Info] Downloading video: " + Math.floor((videoDownloadedSize * 100) / videoSize) + "%\t|\t Downloading audio: " + Math.floor((audioDownloadedSize * 100) / audioSize) + "%");
 
-					process.stdout.write("\rDownloading audio [" + Math.round((audioDownloadedSize * 100) / audioSize) + "%]");				
+					/*for(let i = 0; i < audioBuffersLength; i++){	
+						process.stdout.moveCursor(0, -1);
+						process.stdout.clearLine(0);
+					};
+
+					console.clear();
+
+					for(let i = 0; i < audioBuffersLength; i++){
+						console.log("[Audio] Buffer (" + i + ") = ", audioBuffers[i]);						
+					};*/
+			
+					//process.stdout.write("\rDownloading video [" + Math.round((videoDownloadedSize * 100) / videoSize) + "%]");				
 
 				};
 
+		
 			});
 		
-			socket.on("error", (err) => err = err);
+			socket.on("error", (err) => { if(err) this.emit("error", err); });
 
 			socket.on("end", () => { 
 
-				if((videoFile && isVideoDownloaded) || !videoFile) DownloadEvents.emit("finished", videoFile, audioFile);
-
-				else isAudioDownloaded = true;
+				audioBuffersFinished++;
+						
+				if(audioBuffersFinished === audioBuffersLength){
+					
+					if(isVideoDownloaded || !videoFile){
+						DownloadEvents.emit("finish");
+					}else isAudioDownloaded = true;
+				};
+		
 			});
 
 			//console.log(info);
 
-			DownloadEvents.on("finished", (videoFile, audioFile) => {
+		});
 
-				console.log("Finished!");				
+		DownloadEvents.on("finish", (index) => {
+				
+			console.log("\nFinish downloading!");
+				
+			if(videoFile) 
+				fs.writeFileSync(videoFile, Buffer.concat(videoBuffers));
+			if(audioFile)
+				fs.writeFileSync(audioFile, Buffer.concat(audioBuffers));		
+	
+			if(videoFile && audioFile){
+					
+				console.log("Wait a moment...");
 
-			});			
+				let platform = os.platform();
+				let ffmpegPath;
 
-		});	
+				if(platform === "win32"){
+
+					ffmpegPath = ffmpeg.winPath;						
+
+				}else if(platform === "linux"){
+
+					ffmpegPath = ffmpeg.linuxPath;
+
+				}else { 
+					let err = new Error("No suported plataform for ffmpeg!");
+					this.emit("error", err);
+				};
+
+				let command = ffmpegPath + "/ffmpeg -y -i \"" + videoFile + "\" -i \"" + audioFile + "\" -shortest \"" + opath + "/output.mp4\"";
+				cprocess.exec(command, (err, stderr, stdout) => {
+
+					if(err) this.emit("error", err)
+					else if(stderr){
+						let err = new Error(stderr);
+						this.emit("error", err);
+					}else {
+												
+						err = fs.rmSync(videoFile);
+						err = fs.rmSync(audioFile);
+						err = fs.renameSync(opath + "/output.mp4", opath + "/" + this.filter_bad_chars(title) + ".mp4");
+						this.emit("download-finished");
+					};
+					
+				});
+
+			};
+
+		});				
 	
 	};
 
