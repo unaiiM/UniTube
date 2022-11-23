@@ -152,3 +152,8 @@ Another funcionalities are avaliavle when video is loaded, like:
   - Get video title 
   - Get thumbnail in max resolution
   - Get video thumbnail (small) --> there is 4 sizes; 0, 1, 2, 3 --> if size is not specified the default is 3
+  
+  
+### Posdata
+
+This project is devolvet by me with no professional use, then the code is not perfect, there is a lot of comments and a lot of functions inside only one file.
