@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>UniTube</title>
+    <link rel="stylesheet" href="/css/index.css">
+</head>
+<body>
+
+	<section class="alert-section">
+		<p class="alert-text">Alert box</p>
+	</section>
+
+	<section class="main-section">
+
+        	<div class="cell video-and-playlists-cell">
+            		<section class="video-section">
+                		<div class="video">
+                    		<img src="https://w7.pngwing.com/pngs/388/487/png-transparent-computer-icons-graphy-img-landscape-graphy-icon-miscellaneous-angle-text.png">
+							<video preload="auto"></video>
+                			<audio></audio>
+						</div>
+                		<div class="video-progress">
+                    			<progress id="progress-time" value="0" max="100"></progress>
+                		</div>
+                		<div class="video-info">
+                    			<h1>UNITUBE</h1>
+                		</div>
+                		<div class="video-bar">
+					<div class="video-bar-cell video-bar-config">
+						<img id="video-button-config" src="/img/config.png">	
+						
+						<div class="video-config">
+							<div class="video-config-option video-config-quality">			
+								<h1>Quality</h1>
+								<select></select>
+							</div>
+							<div class="video-config-option video-config-checkbox video-config-only-audio">			
+								<h1>Only audio</h1>
+								<input type="checkbox" name="only-audio">
+							</div>
+							<div class="video-config-option video-config-download">			
+								<h1>Download</h1>
+							</div>
+
+						</div>
+					</div>
+                  	<div class="video-bar-cell" style="width: 40%; padding: 0;">
+						<img id="video-rewind" src="/img/rewind-button.png">
+                    	<div class="video-bar-spacer"></div>
+                    	<img id="video-play-pause" src="/img/pause-button.png">
+                    	<div class="video-bar-spacer"></div>
+                    	<img id="video-forward" src="/img/forward-button.png">		
+					</div>
+					<div class="video-bar-cell video-bar-volume">
+						<div class="volume">
+							<img src="/img/volume.png">
+							<progress id="progress-volume" value="100" max="100"></progress>
+						</div>	
+					</div>
+				</div>
+            		</section>
+            		<section class="playlist-section">
+                		              
+            		</section>
+        	</div>
+           
+        	<section class="list-section">
+            	<div class="list-items">
+     			      
+           		</div>
+        	</section>
+
+	</section>
+
+	<section class="app-options">
+
+		<div class="app-options-background-color">
+			<input type="color" name="background-color">
+		</div>
+
+	</section>
+
+	<script src="/js/index.js"></script>
+
+</body>
+</html>
