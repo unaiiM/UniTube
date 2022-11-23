@@ -60,9 +60,92 @@ download.on("exported", (items) => {
 });
 ```
 
-Download videos:
+Download video:
 
+```
+const path = __dirname;
+const Downloader = require(path + "/yt-downloader.js");
+const URL = "https://youtu.be/ed-oXKDmca0";
+const options = {
+    video : {
+        type: 'video/mp4',  // not required in yt videos there is only mp4 or webm, default is mp4
+        quality: 720,       // not required the default is 360
+        downloadSocketsSize : 10    // not required default is 10, more sockets more download velocity.
+    },
+    audio : {
+        type: 'audio/mp4',  // not required, same as video
+        quality: 'medium',   // not required, default is medium, there is three audio qualitys; low, medium and high
+        downloadSocketsSize : 5 // not required, default is 5
+    }
+};
 
+/*
+
+If you only want audio, just don't define video, do it like this:
+
+options = {
+    audio : {
+        type: 'audio/mp4',  // not required, same as video
+        quality: 'medium',   // not required, default is medium, there is three audio qualitys; low, medium and high
+        downloadSocketsSize : 5 // not required, default is 5
+    }
+};
+
+If you ony want video just don't define audi, do it like this:
+
+options = {
+    video : {
+        type: 'video/mp4',  // not required in yt videos there is only mp4 or webm, default is mp4
+        quality: 720,       // not required the default is 360
+        downloadSocketsSize : 10    // not required default is 10, more sockets more download velocity.
+    }
+};
+
+If you want default options on video or audio just define it, but not put nothing inside, do it like this:
+
+options = {
+    video : {}
+    audio : {}
+};
+
+Default options and only download video:
+
+options = {
+    video : {}
+};
+
+Default options and only download audio:
+
+options = {
+    audio : {}
+};
+
+*/
+
+let download = new Downloader(URL);
+
+download.load();
+
+download.on("error", (err) => {
+   
+    throw err;    
+
+});
+
+download.on("load", () => {
+
+    console.log(download.adaptiveFormats);
+
+    download.download(options,  path);
+
+    download.on("download-finished", (file) => { 
+    
+        console.log(file); // path to the file and the file name
+
+    });
+
+});
+```
 
 
 
