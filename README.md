@@ -156,4 +156,4 @@ Another funcionalities are avaliavle when video is loaded, like:
   
 ### Posdata
 
-This project is devolvet by me with no professional use, then the code is not perfect, there is a lot of comments and a lot of functions inside only one file.
+This project is devolved by me with no professional use, then the code is not perfect, there is a lot of comments and a lot of functions inside only one file.
