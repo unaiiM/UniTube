@@ -182,36 +182,30 @@ router.route("/:list/add")
 		}else {
 			
 			let download = new Downloader(url);
-			url = download.check_url(url);
 
-			if(!url) 
-				res.status(500).json({ error : "Bad url entred!"});
-			else {
-				download.load();
-				download.on("load", () => {
+			download.on("error", (err) => {
+
+				res.status(500).json({ error : err });
+				
+			});
+				
+			download.load();
+			download.on("load", () => {
 	
-					db[list].list.push({
-						url : url,
-						title : download.get_title(),
-						thumbnail : download.get_thumbnail(),
-						thumbnail_max_resolution : download.get_thumbnail_max_resolution()
-					});			
+				db[list].list.push({
+					url : url,
+					title : download.get_title(),
+					thumbnail : download.get_thumbnail(),
+					thumbnail_max_resolution : download.get_thumbnail_max_resolution()
+				});			
 					
-					let err = updateDatabase();
+				let err = updateDatabase();
 
-					if(err) res.status(500).json({ error : err });
-					else res.status(200).json({ msg : "Video added to the list!"});
+				if(err) res.status(500).json({ error : err });
+				else res.status(200).json({ msg : "Video added to the list!"});
 						
-				});
-
-				download.on("error", (err) => {
-
-					res.status(500).json({ error : err });
-					
-				});
-
-			};
-		}
+			});
+		};
 	});
 
 router.route("/:list/import")
@@ -226,48 +220,42 @@ router.route("/:list/import")
 		}else {
 			
 			let download = new Downloader(url);
-			url = download.check_url(url);
 
-			if(!url) 
-				res.status(500).json({ error : "Bad url entred!"});
-			else {
+			download.on("error", (err) => {
 
-				download.get_playlist_items();
+				res.status(500).json({ error : err });
+
+			});
+
+			download.get_playlist_items();
 	
-				let i = 0;
+			let i = 0;
 
-				download.on("error", (err) => {
+			download.on("exported", (items) => {
 
-					res.status(500).json({ error : err });
+				let itemsInfo = download.playlist_items;
+				console.log(itemsInfo);
+
+				items.forEach((item) => {
+						
+					db[list].list.push({
+						url : item,
+						title : itemsInfo[i].playlistVideoRenderer.title.runs[0].text,
+						thumbnail : itemsInfo[i].playlistVideoRenderer.thumbnail.thumbnails[3].url,
+						thumbnail_max_resolution : "https://i.ytimg.com/vi/" + itemsInfo[i].playlistVideoRenderer.videoId + "/maxresdefault.jpg"
+					});	
+
+					i++;
 
 				});
-
-				download.on("exported", (items) => {
-
-					let itemsInfo = download.playlist_items;
-					console.log(itemsInfo);
-
-					items.forEach((item) => {
-						
-						db[list].list.push({
-							url : item,
-							title : itemsInfo[i].playlistVideoRenderer.title.runs[0].text,
-							thumbnail : itemsInfo[i].playlistVideoRenderer.thumbnail.thumbnails[3].url,
-							thumbnail_max_resolution : "https://i.ytimg.com/vi/" + itemsInfo[i].playlistVideoRenderer.videoId + "/maxresdefault.jpg"
-						});	
-
-						i++;
-
-					});
 					
-					let err = updateDatabase();
+				let err = updateDatabase();
 
-					if(err) res.status(500).json({ error : err});
-					else res.status(200).json({ msg : "Sucessfully imported to the list!"});
+				if(err) res.status(500).json({ error : err});
+				else res.status(200).json({ msg : "Sucessfully imported to the list!"});
 						
-				});
-			};
-		}
+			});
+		};
 	});
 
 router.route("/:list/remove-item")

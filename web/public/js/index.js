@@ -486,6 +486,7 @@ function createPlaylist(){
 		if(response.error){
 			
 			alert(response.error);
+
 			isCreatingPlaylist = false;
 
 		}else {
@@ -515,13 +516,33 @@ function createPlaylist(){
 		
 				});
 
-				isCreatingPlaylist = false;
-
 				if(response.error){
 					alert(response.error);
+
+					let id = CurrentPlaylists.length;
+
+					console.log(id);
+
+					response = await new Promise((resolv, reject) => {
+
+						fetch(API + "/lists/" + (id + 1) + "/remove")
+							.then((res) => {
+								res.json()
+									.then((json) => {
+										resolv(json);
+									});
+							});			
+			
+					});
+
+					if(response.error) alert(response.error);
+
+					isCreatingPlaylist = false;
+				
 				}else {
 					alert(response.msg);
 					loadPlaylists();	
+					isCreatingPlaylist = false;
 				};
 
 			}else {
@@ -572,7 +593,6 @@ function checkItemScroll(item){
 }
 
 async function loadPlaylist(id){
-	
 
 	if(id === undefined){
 		return;
@@ -725,8 +745,13 @@ async function loadPlaylist(id){
 					removeVideo();
 				};
 
+				id = id - 1;
+
+				if(CurrentPlaylists.length - 1 === 0) CurrentPlaylistID = undefined;
+				else if(id < 0) id = CurrentPlaylists.length - 1;
+
 				await loadPlaylists();
-				await loadPlaylist(id - 1);
+				await loadPlaylist(id);
 	
 			};
 
@@ -926,7 +951,9 @@ async function loadPlaylist(id){
 				alert(response.error);
 			}else{
 				alert(response.msg);
-				loadPlaylist(CurrentPlaylistID);
+				let scroll = PlaylistSection.scrollTop;
+				await loadPlaylist(CurrentPlaylistID);
+				PlaylistSection.scrollTo(0, scroll);
 			};
 
 			isMovingItem = false;
@@ -988,10 +1015,9 @@ async function loadPlaylist(id){
 				return;
 			}else{
 				alert(response.msg);
+				let scroll = PlaylistSection.scrollTop;
 				await loadPlaylist(CurrentPlaylistID);
-				
-				if(id !== 0) checkItemScroll((PlaylistSection.querySelectorAll(".list-item"))[id - 1]);
-
+				PlaylistSection.scrollTo(0, scroll);
 				return;
 			};
 

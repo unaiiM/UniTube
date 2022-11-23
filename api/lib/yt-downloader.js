@@ -15,14 +15,24 @@ class Downloader {
 	
 	constructor(url) {
 
-		this.url = this.check_url(url);
-		console.log(this.url);
+		this.url = url;
+
 	};
 
-	async load(){		
+	async load(){	
+		
+		this.url = this.check_url(this.url);
+
+		if(this.url === null){
+			return;
+		};
 
 		this.yt_source = await this.get_source();	// video source
 		this.ytipc = this.get_ytipc(); 					// ytInitialPlayerResponse variable
+
+		if(!this.ytipc){
+			return;
+		};
 
 		this.base_js_url = this.get_base_js_url();			// base.js url
 		console.log(this.base_js_url);
@@ -54,13 +64,28 @@ class Downloader {
 
 	async get_playlist_items(){
 
-		let url = this.url;
-		this.yt_source = await this.get_source();
+		this.url = this.check_url(this.url);
+
+		if(this.url === null){
+			return;
+		};
 		
+		this.yt_source = await this.get_source();
+
 		let ytid = this.get_ytid();
+
 		let context = this.yt_source.slice(this.yt_source.indexOf('"INNERTUBE_CONTEXT":') + '"INNERTUBE_CONTEXT":'.length, this.yt_source.indexOf(',"INNERTUBE_CONTEXT_CLIENT_NAME"'));
 		let list = [];
-		let items = ytid.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0].itemSectionRenderer.contents[0].playlistVideoListRenderer.contents;
+		let items;
+
+		try {
+			items = ytid.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0].itemSectionRenderer.contents[0].playlistVideoListRenderer.contents;
+		}catch(error){
+			let err = "Can not load the playlist!";
+			this.emit("error", err);
+			return;
+		};
+
 		let key = this.yt_source.slice(this.yt_source.indexOf('"INNERTUBE_API_KEY":"') + '"INNERTUBE_API_KEY":"'.length, this.yt_source.indexOf('","INNERTUBE_API_VERSION"'));
 
 		this.playlist_items = [];
@@ -143,7 +168,7 @@ class Downloader {
 		// https://youtu.be/7d0QGcRXqGg --> 7d0QGcRXqGg
 		// embeded ???
 
-		if(url.match(".*:\/\/.*\.youtube.com\/") !== null){
+		if(url.match(".*:\/\/.*\.youtube.com\/")){
 			return url;	
 		}else if(url.match(".*:\/\/youtu.be\/")){
 			let v = url.split("/")[3];
@@ -152,7 +177,7 @@ class Downloader {
 		}else {
 			let err = "Bad url entred! Example: https://youtube.com/watch?v=jUoHX7i03nY";
 			this.emit("error", err);
-			return;
+			return null;
 		};
 
 	};
