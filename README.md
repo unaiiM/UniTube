@@ -152,4 +152,3 @@ Another funcionalities are avaliavle when video is loaded, like:
   - Get video title 
   - Get thumbnail in max resolution
   - Get video thumbnail (small) --> there is 4 sizes; 0, 1, 2, 3 --> if size is not specified the default is 3
-  - 
