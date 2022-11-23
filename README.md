@@ -10,7 +10,7 @@ Lastest release: https://drive.google.com/file/d/1MAenL0Lzrd8wKv6_X19hnhK6mDhONF
 
 ## Yt-Downloader
 
-To download these vidos there and get the youtube video servers I devolvet a sample library. Is located inside api/lib/yt-downloader.
+To download these vidos there and get the youtube video servers I developed a sample library. Is located inside api/lib/yt-downloader.
 If you wat to use it you need to have ffmpeg binary located on ffmpeg/win64/ffmpeg and ffmpeg/linux64/ffmpeg or you can change the path inside the library code.
 
 You can:
@@ -156,4 +156,4 @@ Another funcionalities are avaliavle when video is loaded, like:
   
 ### Posdata
 
-This project is devolved by me with no professional use, then the code is not perfect, there is a lot of comments and a lot of functions inside only one file.
+This project is developed by me with no professional use, then the code is not perfect, there is a lot of comments and a lot of functions inside only one file.
