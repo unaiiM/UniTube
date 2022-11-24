@@ -5,7 +5,7 @@
 UniTube is just a playlist app where you can create lists and add and watch videos from YouTube without any ads. Can download videos, change video quality or just only listen the audio for fastest playback. 
 
 ## Download
-
+Download it from the link because in this github repo is missing required tools.
 Lastest release: https://drive.google.com/file/d/1MAenL0Lzrd8wKv6_X19hnhK6mDhONFsL/view?usp=sharing
 
 ## Yt-Downloader
