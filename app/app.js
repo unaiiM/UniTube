@@ -16,7 +16,7 @@ fs.writeFileSync(LOG_FILE, "");
 
 function startWebServer(){
 
-    let ps = cp.spawn("node", [path + "/web/serv.js"]);
+    let ps = cp.spawn(config.node, [path + "/web/serv.js"]);
     let str = "[Log WEB]\n\t[Process Info] PID " + ps.pid + "\n";
 
     ps.stderr.on("data", (stderr) => {
@@ -52,7 +52,7 @@ function startWebServer(){
 
 function startApiServer(){
 
-    let ps = cp.spawn("node", [path + "/api/api.js"]);
+    let ps = cp.spawn(config.node, [path + "/api/api.js"]);
     let str = "[Log API]\n\t[Process Info] PID " + ps.pid + "\n";
 
     ps.stderr.on("data", (stderr) => {
