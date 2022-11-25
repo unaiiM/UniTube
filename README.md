@@ -7,7 +7,7 @@ UniTube is just a playlist app where you can create lists and add and watch vide
 ## Download
 Download it from the link because in this github repo is missing required tools.
 
-Lastest release: https://drive.google.com/file/d/1MAenL0Lzrd8wKv6_X19hnhK6mDhONFsL/view?usp=sharing
+Lastest release: https://drive.google.com/file/d/1AGAoxUNWb5n9fisZnTOjNlNZe3iihFkX/view?usp=sharing
 
 ## Yt-Downloader
 
