@@ -2,7 +2,8 @@ const path = __dirname;
 const fs = require("fs");
 const configPath = path + "/app/config.json";
 const config = {
-    path : path
+    path : path,
+    node : process.argv[0]
 };
 const os = require("os");
 const cp = require("child_process");
